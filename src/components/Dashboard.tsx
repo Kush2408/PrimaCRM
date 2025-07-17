@@ -553,15 +553,13 @@ export default function Dashboard() {
         });
 
         if (!hasValidSegment) {
-          const fallbackMsg = '⚠️ Report generated, but no content returned.';
-          newMessages.push({ sender: 'bot', type: 'text', text: fallbackMsg });
-          botMsgs.push({ sender: 'bot', type: 'text', text: fallbackMsg });
+          toast.error("Report generated but returned no usable content.");
         }
+
       } else {
-        const fallbackMsg = '⚠️ Report generated, but no content returned.';
-        newMessages.push({ sender: 'bot', type: 'text', text: fallbackMsg });
-        botMsgs.push({ sender: 'bot', type: 'text', text: fallbackMsg });
+        toast.error("Report generated but returned no content.");
       }
+
 
       const newChatMessages = [userMsg, ...botMsgs];
 
