@@ -38,7 +38,7 @@ I contributed as a **Frontend Developer**, responsible for:
 
 | Area       | Tech Used                           |
 |------------|-------------------------------------|
-| Frontend   | React, TypeScript, Tailwind CSS     |
+| Frontend   | React, Vite, TypeScript, Tailwind CSS     |
 | API Comm   | Axios, JWT Authentication           |
 | UI/UX      | Modals, Toasts (react-hot-toast), Form Handling |
 | Tools      | React Markdown |
