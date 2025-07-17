@@ -1,69 +1,75 @@
-# React + TypeScript + Vite
+# PRIMA CRM – AI Report Generation Module
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+PRIMA CRM is an enterprise-grade Customer Relationship Management platform tailored for professional coaching workflows. This specific module enables AI-powered candidate report generation, refinement, and finalization through a secure, scalable API interface.
 
-Currently, two official plugins are available:
+> ⚠️ This is a **confidential client project**. No real credentials, API URLs, or source code are shared here. This repository is intended as a **developer showcase** only.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+---
 
-## Expanding the ESLint configuration
+## 🧑‍💻 My Role
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+I contributed as a **Frontend Developer**, responsible for:
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- Implementing dynamic UI workflows for report creation, modification, and finalization
+- Managing secure token-based session handling (Access & Refresh Tokens)
+- Building interactive dashboards, filters, and report history views
+- Integrating real-time feedback and status indicators for report lifecycle stages
+- Ensuring responsive and accessible UI using Tailwind CSS and React best practices
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+---
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## 🔑 Key Features
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+- ✨ **AI-Powered Report Generation**  
+  Automatically generate personalized monthly summaries from session notes and candidate data.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- ✍️ **Coach-Guided Refinement**  
+  Allow coaches to add additional notes and prompts to influence AI-generated content.
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+- 🔒 **Secure Authentication Flow**  
+  JWT-based access/refresh token implementation with automatic renewal logic.
+
+- 📊 **Status Lifecycle Management**  
+  Track and update report states: Draft → In Review → Finalized.
+
+---
+
+## 🛠 Tech Stack
+
+| Area       | Tech Used                           |
+|------------|-------------------------------------|
+| Frontend   | React, TypeScript, Tailwind CSS     |
+| API Comm   | Axios, JWT Authentication           |
+| UI/UX      | Modals, Toasts (react-hot-toast), Form Handling |
+| Tools      | React Markdown |
+
+---
+
+## 📂 Modules Handled
+
+```bash
+/pages
+ ├── Dashboard
+ ├── ReportList
+ └── Auth (Login, Token Refresh)
+
+🧠 AI Report Workflow (Frontend)
+Generate Report
+→ Form to collect program, candidate, and notes
+→ Call /report/generate
+
+Modify Draft
+→ Coach edits + adds prompts
+→ Call /report/modify
+
+Finalize Report
+→ Submit finalized copy
+→ Call /report/finalize
+
+View Report History
+→ Table view with versions, status, export options
+
+
+
+
+
