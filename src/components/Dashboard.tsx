@@ -352,6 +352,43 @@ export default function Dashboard() {
       month: selectedMonth,
     };
     setMessages((prev) => [...prev, secondaryNoteMsg]);
+    const matchingIndex = reportHistory.findIndex(
+      (item) =>
+        item.firstName.toLowerCase() === firstName.toLowerCase()
+    );
+
+    let updatedHistory: ReportHistoryItem[] = [];
+
+    if (matchingIndex !== -1) {
+      const updatedItem = { ...reportHistory[matchingIndex] };
+      updatedItem.chat = [...(updatedItem.chat || []), secondaryNoteMsg];
+      updatedHistory = [
+        updatedItem,
+        ...reportHistory.filter((_, i) => i !== matchingIndex),
+      ];
+    } else {
+      const newHistory: ReportHistoryItem = {
+        id: requestId,
+        date: selectedDate,
+        firstName,
+        lastName,
+        coachId: selectedCoach?.id ?? 0,
+        coachName: selectedCoach?.name ?? '',
+        programName,
+        programType,
+        programDuration,
+        programActiveDate,
+        programCompletedDate,
+        report_date: selectedDate,
+        note,
+        report: '',
+        chat: [secondaryNoteMsg],
+      };
+      updatedHistory = [newHistory, ...reportHistory];
+    }
+
+    setReportHistory(updatedHistory);
+    saveReportHistory(updatedHistory);
   };
 
 
