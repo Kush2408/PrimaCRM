@@ -364,11 +364,11 @@ export default function Dashboard() {
       toast.error(
         !note
           ? 'Prompt cannot be empty.'
-            : note.length < 10
-              ? 'Prompt must be at least 10 characters.'
-              : isOnlyNumbers
-                ? 'Prompt cannot be only consecutive numbers.'
-                : 'Invalid prompt.'
+          : note.length < 10
+            ? 'Prompt must be at least 10 characters.'
+            : isOnlyNumbers
+              ? 'Prompt cannot be only consecutive numbers.'
+              : 'Invalid prompt.'
       );
       return;
     }
@@ -438,7 +438,7 @@ export default function Dashboard() {
     const newMessages: MessageType[] = [];
     const previousUserReports = reportHistory.filter(
       (report) =>
-        report.firstName.trim().toLowerCase() === firstName.trim().toLowerCase() 
+        report.firstName.trim().toLowerCase() === firstName.trim().toLowerCase()
     );
 
     // Extract bot messages & safe unique IDs
@@ -561,7 +561,7 @@ export default function Dashboard() {
 
       const matchingIndex = reportHistory.findIndex(
         (item) =>
-          item.firstName.toLowerCase() === firstName.toLowerCase() 
+          item.firstName.toLowerCase() === firstName.toLowerCase()
       );
 
       let updatedHistory: ReportHistoryItem[] = [];
@@ -879,19 +879,23 @@ export default function Dashboard() {
                   }`}
               >
                 {msg.sender === 'bot' &&
-                  msg.text !== '👋 Hi there! Please select your details and enter your prompt to generate the report.'
-                  // msg.text && (
-                  //   <button
-                  //     onClick={() => {
-                  //       navigator.clipboard.writeText(msg.text || '');
-                  //       toast.success('Message copied!');
-                  //     }}
-                  //     className="absolute top-2 right-2 text-xs text-gray-600 bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded"
-                  //   >
-                  //     📋Copy
-                  //   </button>
-                  // )   
-                }
+                  msg.text !== '👋 Hi there! Please select your details and enter your prompt to generate the report.' &&
+                  msg.text && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(msg.text?.toString() || '');
+                          toast.success('Message copied!');
+                        } catch (error) {
+                          toast.error('Failed to copy message');
+                          console.error('Copy error:', error);
+                        }
+                      }}
+                      className="absolute top-2 right-2 text-xs text-gray-600 bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded"
+                    >
+                      📋Copy
+                    </button>
+                  )}
                 <div className="prose prose-sm max-w-full text-sm sm:text-base">
                   <ReactMarkdown>{msg.text || ''}</ReactMarkdown>
                 </div>
@@ -971,7 +975,7 @@ export default function Dashboard() {
             </>
           )}
         </div>
-      </main>
-    </div>
+      </main >
+    </div >
   );
 }
