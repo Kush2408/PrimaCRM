@@ -360,12 +360,10 @@ export default function Dashboard() {
     const selectedMonth = new Date(selectedDate).toISOString().slice(0, 7);
     const note = (customInput ?? input).trim();
     const isOnlyNumbers = /^\d+$/.test(note);
-    if (!note || note.length > 1000 || note.length < 10 || isOnlyNumbers || !isNaN(Number(note))) {
+    if (!note || note.length < 10 || isOnlyNumbers || !isNaN(Number(note))) {
       toast.error(
         !note
           ? 'Prompt cannot be empty.'
-          : note.length > 1000
-            ? 'Prompt cannot exceed 1000 characters.'
             : note.length < 10
               ? 'Prompt must be at least 10 characters.'
               : isOnlyNumbers
@@ -440,9 +438,7 @@ export default function Dashboard() {
     const newMessages: MessageType[] = [];
     const previousUserReports = reportHistory.filter(
       (report) =>
-        report.firstName.trim().toLowerCase() === firstName.trim().toLowerCase() &&
-        report.lastName.trim().toLowerCase() === lastName.trim().toLowerCase() &&
-        report.coachId === selectedCoach?.id
+        report.firstName.trim().toLowerCase() === firstName.trim().toLowerCase() 
     );
 
     // Extract bot messages & safe unique IDs
@@ -565,9 +561,7 @@ export default function Dashboard() {
 
       const matchingIndex = reportHistory.findIndex(
         (item) =>
-          item.firstName.toLowerCase() === firstName.toLowerCase() &&
-          item.lastName.toLowerCase() === lastName.toLowerCase() &&
-          item.coachId === selectedCoach.id
+          item.firstName.toLowerCase() === firstName.toLowerCase() 
       );
 
       let updatedHistory: ReportHistoryItem[] = [];
@@ -941,7 +935,6 @@ export default function Dashboard() {
               placeholder="Enter your prompt to generate the report..."
               value={input}
               min={10}
-              maxLength={1000}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
             />
