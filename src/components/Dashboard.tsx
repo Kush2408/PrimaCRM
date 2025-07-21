@@ -22,7 +22,7 @@ type MessageType = {
 };
 
 type Coach = { id: number; name: string };
-type ProgramDuration = | '1_MONTH' | '2_MONTH' | '3_MONTHS' | '6_MONTHS' | '12_MONTHS';
+type ProgramDuration = | '1_MONTH' | '2_MONTHS' | '3_MONTHS' | '4_MONTHS' | '5_MONTHS' | '6_MONTHS' | '12_MONTHS';
 
 type ReportHistoryItem = {
   id: string;
@@ -42,7 +42,7 @@ type ReportHistoryItem = {
   chat?: MessageType[];
 };
 
-const FIRST_NAMES = ['Cherie', 'Lauren', 'Dean', 'Maria', 'Miranda', 'Adrienne', 'John', 'Brad', 'David', 'Samantha', 'Allister', 'Yujia', 'Minu', 'Sidd', 'Darren', 'Rebecca', 'Josephine', 'Jodie', 'Tommy', 'Roy', 'Glenn', 'Nick', 'Joey'];
+const FIRST_NAMES = ['Cherie', 'Lauren', 'Dean', 'Maria', 'Miranda', 'Adrienne', 'John','Poonan','Brad', 'David', 'Samantha', 'Allister', 'Yujia', 'Minu', 'Sidd', 'Darren', 'Rebecca', 'Josephine', 'Jodie', 'Tommy', 'Roy', 'Glenn', 'Nick', 'Joey'];
 const LAST_NAMES = ['Johnson', 'Smith', 'Williams', 'Popovic', 'Scott', 'Hecimovic', 'Chalmers', 'Hunt', 'Wang', 'Elgie', 'Caruana', 'Schwilk', 'Greenhill', 'Talbot', 'Fioravanti', 'Sharma', 'Cadd', 'Teslya', 'Gough', 'Cartwright', 'Vulic', 'Nallaiah', 'Troy'];
 const COACHES: Coach[] = [
   { id: 515, name: 'Andrea Van Der Merwe' },
@@ -52,6 +52,7 @@ const COACHES: Coach[] = [
   { id: 502, name: 'Claire Thomas' },
   { id: 508, name: 'Claire Austin' },
   { id: 511, name: 'Cathy Thorpe' },
+  { id: 516, name: 'Nicole Layton' },
   { id: 507, name: 'Carla Nicholson' },
   { id: 509, name: 'Elizabeth Logan' },
   { id: 510, name: 'Jenni Simmons' },
@@ -64,8 +65,10 @@ const COACHES: Coach[] = [
 ];
 const PROGRAM_DURATIONS: ProgramDuration[] = [
   '1_MONTH',
-  '2_MONTH',
+  '2_MONTHS',
   '3_MONTHS',
+  '4_MONTHS',
+  '5_MONTHS',
   '6_MONTHS',
   '12_MONTHS',
 ];
