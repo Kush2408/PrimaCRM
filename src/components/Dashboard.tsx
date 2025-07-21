@@ -42,7 +42,7 @@ type ReportHistoryItem = {
   chat?: MessageType[];
 };
 
-const FIRST_NAMES = ['Cherie', 'Lauren', 'Dean', 'Maria', 'Miranda', 'Adrienne', 'John','Poonan','Brad', 'David', 'Samantha', 'Allister', 'Yujia', 'Minu', 'Sidd', 'Darren', 'Rebecca', 'Josephine', 'Jodie', 'Tommy', 'Roy', 'Glenn', 'Nick', 'Joey'];
+const FIRST_NAMES = ['Cherie', 'Lauren', 'Dean', 'Maria', 'Miranda', 'Adrienne', 'John','Poonan','Brad', 'David', 'Samantha', 'Allister', 'Yujia', 'Minu', 'Sidd', 'Darren', 'Rebecca', 'Josephine', 'Jodie', 'Tommy', 'Roy', 'Glenn','Nick','Joey','Joseph'];
 const LAST_NAMES = ['Johnson', 'Smith', 'Williams', 'Popovic', 'Scott', 'Hecimovic', 'Chalmers', 'Hunt', 'Wang', 'Elgie', 'Caruana', 'Schwilk', 'Greenhill', 'Talbot', 'Fioravanti', 'Sharma', 'Cadd', 'Teslya', 'Gough', 'Cartwright', 'Vulic', 'Nallaiah', 'Troy'];
 const COACHES: Coach[] = [
   { id: 515, name: 'Andrea Van Der Merwe' },
@@ -61,7 +61,9 @@ const COACHES: Coach[] = [
   { id: 506, name: 'Paul Di Michiel' },
   { id: 501, name: 'Sarah Felice' },
   { id: 512, name: 'Simon Bruce' },
-
+  { id: 517, name: 'Nicole Timmer' },
+  { id: 518, name: 'Paul Stormon' },
+  { id: 519, name: 'Sarah Jorgensen' },
 ];
 const PROGRAM_DURATIONS: ProgramDuration[] = [
   '1_MONTH',
