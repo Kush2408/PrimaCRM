@@ -42,7 +42,7 @@ type ReportHistoryItem = {
   chat?: MessageType[];
 };
 
-const FIRST_NAMES = ['Cherie', 'Lauren', 'Dean', 'Maria', 'Miranda', 'Adrienne', 'John','Poonan','Brad', 'David', 'Samantha', 'Allister', 'Yujia', 'Minu', 'Sidd', 'Darren', 'Rebecca', 'Josephine', 'Jodie', 'Tommy', 'Roy', 'Glenn','Nick','Joey','Joseph'];
+const FIRST_NAMES = ['Cherie', 'Lauren', 'Dean', 'Maria', 'Miranda', 'Adrienne', 'John', 'Poonan', 'Brad', 'David', 'Samantha', 'Allister', 'Yujia', 'Minu', 'Sidd', 'Darren', 'Rebecca', 'Josephine', 'Jodie', 'Tommy', 'Roy', 'Glenn', 'Nick', 'Joey', 'Joseph'];
 const LAST_NAMES = ['Johnson', 'Smith', 'Williams', 'Popovic', 'Scott', 'Hecimovic', 'Chalmers', 'Hunt', 'Wang', 'Elgie', 'Caruana', 'Schwilk', 'Greenhill', 'Talbot', 'Fioravanti', 'Sharma', 'Cadd', 'Teslya', 'Gough', 'Cartwright', 'Vulic', 'Nallaiah', 'Troy'];
 const COACHES: Coach[] = [
   { id: 515, name: 'Andrea Van Der Merwe' },
@@ -399,7 +399,7 @@ export default function Dashboard() {
 
 
   const handleSendMessage = async (customInput?: string, isSecondary = false) => {
-    const selectedMonth = new Date(selectedDate).toISOString().slice(0, 7);
+    // const selectedMonth = new Date(selectedDate).toISOString().slice(0, 7);
     const note = (customInput ?? input).trim();
     const isOnlyNumbers = /^\d+$/.test(note);
     if (!note || note.length < 10 || isOnlyNumbers || !isNaN(Number(note))) {
@@ -412,6 +412,19 @@ export default function Dashboard() {
               ? 'Prompt cannot be only consecutive numbers.'
               : 'Invalid prompt.'
       );
+      return;
+    }
+
+    if (!note) {
+      toast.error('Prompt cannot be empty.');
+      return;
+    }
+
+    let selectedMonth = '';
+    try {
+      selectedMonth = new Date(selectedDate).toISOString().slice(0, 7);
+    } catch (err) {
+      toast.error('Invalid or missing report date.');
       return;
     }
 
@@ -473,10 +486,13 @@ export default function Dashboard() {
     };
 
     setMessages((prev) => [...prev, userMsg]);
+  
     setLoading(true);
     setInput('');
     let botMsgs: MessageType[] = [];
     let generatedReport = '';
+
+
     const newMessages: MessageType[] = [];
     const previousUserReports = reportHistory.filter(
       (report) =>
