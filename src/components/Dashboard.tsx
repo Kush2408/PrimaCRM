@@ -93,7 +93,7 @@ function isExpired(expiry: string | undefined | null): boolean {
   const expiryDate = new Date(safeExpiry);
   if (isNaN(expiryDate.getTime())) return true;
   console.log('Checking expiry:', expiryDate.toISOString(), 'Current time:', new Date().toISOString());
-  return expiryDate.getTime() < Date.now();
+  return false;
 }
 
 function generateId(prefix: string = 'id_') {
@@ -211,33 +211,33 @@ export default function Dashboard() {
     programActiveDate,
     programCompletedDate]);
 
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      const accessTokenExpiry = Cookies.get('access_token_expiry');
-      const refreshTokenExpiry = Cookies.get('refresh_token_expiry');
-      if (isExpired(refreshTokenExpiry)) {
-        Cookies.remove('access_token');
-        Cookies.remove('refresh_token');
-        Cookies.remove('access_token_expiry');
-        Cookies.remove('refresh_token_expiry');
-        if (!loggedOutRef.current) {
-          loggedOutRef.current = true;
-          navigate('/login');
-        }
-        return;
-      }
-      if (
-        accessTokenExpiry &&
-        new Date(accessTokenExpiry.replace(/\.\d+/, '').replace(/\+00:00$/, 'Z')).getTime() -
-        Date.now() <
-        60000
-      ) {
-        await refreshAccessToken();
-      }
-    }, 30000);
+  // useEffect(() => {
+  //   const interval = setInterval(async () => {
+  //     const accessTokenExpiry = Cookies.get('access_token_expiry');
+  //     const refreshTokenExpiry = Cookies.get('refresh_token_expiry');
+  //     if (isExpired(refreshTokenExpiry)) {
+  //       Cookies.remove('access_token');
+  //       Cookies.remove('refresh_token');
+  //       Cookies.remove('access_token_expiry');
+  //       Cookies.remove('refresh_token_expiry');
+  //       if (!loggedOutRef.current) {
+  //         loggedOutRef.current = true;
+  //         navigate('/login');
+  //       }
+  //       return;
+  //     }
+  //     if (
+  //       accessTokenExpiry &&
+  //       new Date(accessTokenExpiry.replace(/\.\d+/, '').replace(/\+00:00$/, 'Z')).getTime() -
+  //       Date.now() <
+  //       60000
+  //     ) {
+  //       await refreshAccessToken();
+  //     }
+  //   }, 30000);
 
-    return () => clearInterval(interval);
-  }, [navigate]);
+  //   return () => clearInterval(interval);
+  // }, [navigate]);
 
   const startNewChat = () => {
     setMessages([
@@ -303,23 +303,23 @@ export default function Dashboard() {
 
   const callWithAuth = async (apiCall: (token: string) => Promise<any>) => {
     let token = Cookies.get('access_token');
-    const accessTokenExpiry = Cookies.get('access_token_expiry');
-    const refreshTokenExpiry = Cookies.get('refresh_token_expiry');
-    if (!token || isExpired(accessTokenExpiry)) {
-      token = await refreshAccessToken();
-      if (!token) return null;
-    }
-    if (isExpired(refreshTokenExpiry)) {
-      Cookies.remove('access_token');
-      Cookies.remove('refresh_token');
-      Cookies.remove('access_token_expiry');
-      Cookies.remove('refresh_token_expiry');
-      if (!loggedOutRef.current) {
-        loggedOutRef.current = true;
-        navigate('/login');
-      }
-      return null;
-    }
+    // const accessTokenExpiry = Cookies.get('access_token_expiry');
+    // const refreshTokenExpiry = Cookies.get('refresh_token_expiry');
+    // if (!token || isExpired(accessTokenExpiry)) {
+    //   token = await refreshAccessToken();
+    //   if (!token) return null;
+    // }
+    // if (isExpired(refreshTokenExpiry)) {
+    //   Cookies.remove('access_token');
+    //   Cookies.remove('refresh_token');
+    //   Cookies.remove('access_token_expiry');
+    //   Cookies.remove('refresh_token_expiry');
+    //   if (!loggedOutRef.current) {
+    //     loggedOutRef.current = true;
+    //     navigate('/login');
+    //   }
+    //   return null;
+    // }
     try {
       return await apiCall(token);
     } catch (err: any) {
@@ -486,7 +486,7 @@ export default function Dashboard() {
     };
 
     setMessages((prev) => [...prev, userMsg]);
-  
+
     setLoading(true);
     setInput('');
     let botMsgs: MessageType[] = [];

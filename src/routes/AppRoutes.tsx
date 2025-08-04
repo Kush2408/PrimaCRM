@@ -1,7 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import LoginForm from '../components/LoginForm';
 import Dashboard from '../components/Dashboard';
-import ProtectedRoute from './ProtectedRoute'; // import the wrapper
+import ProtectedRoute from './ProtectedRoute'; 
 
 export default function AppRoutes() {
   return (
