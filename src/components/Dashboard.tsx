@@ -97,11 +97,16 @@ function isExpired(expiry: string | undefined | null): boolean {
   return false;
 }
 
-function generateId(prefix: string = 'id_') {
-  return prefix + Math.random().toString(36).substring(2, 10) + Date.now();
+// function generateId(prefix: string = 'id_') {
+//   return prefix + Math.random().toString(36).substring(2, 10) + Date.now();
+// }
+
+function generateObjectId() {
+  // Generates a random 24-character hex string
+  return Array.from({ length: 24 }, () =>
+    Math.floor(Math.random() * 16).toString(16)
+  ).join('');
 }
-
-
 
 function formatDateToDDMMYYYY(dateStr: string) {
   if (!dateStr) return '';
@@ -165,7 +170,7 @@ export default function Dashboard() {
   const [programActiveDate, setProgramActiveDate] = useState('');
   const [programCompletedDate, setProgramCompletedDate] = useState('');
 
-  const [requestId, setRequestId] = useState('');
+  const [requestId, setRequestId] = useState(generateObjectId());
   const [candidateId] = useState(() => Math.floor(Math.random() * 100000) + 1);
   const [createdBy] = useState(1);
   const [reportHistory, setReportHistory] = useState<ReportHistoryItem[]>(getReportHistory());
@@ -199,14 +204,21 @@ export default function Dashboard() {
         }
       );
 
-      const validated = response.data?.validated_content;
+      console.log('API response:', response.data);
 
-      if (validated) {
-        const flaggedIssuesList = validated.flagged_issues?.length
+      const validated = response.data?.data?.validated_content;
+      console.log('API validated_content:', validated);
+      // Always show modal if validated_content is present (even if arrays are empty)
+      if (
+        validated &&
+        typeof validated === 'object' &&
+        ('assessment' in validated && 'flagged_issues' in validated && 'suggestions' in validated)
+      ) {
+        const flaggedIssuesList = Array.isArray(validated.flagged_issues) && validated.flagged_issues.length
           ? `<ul style="text-align: left;">${validated.flagged_issues.map((s: string) => `<li>${s}</li>`).join('')}</ul>`
           : '<span style="color:green;">None</span>';
 
-        const suggestionsList = validated.suggestions?.length
+        const suggestionsList = Array.isArray(validated.suggestions) && validated.suggestions.length
           ? `<ul style="text-align: left;">${validated.suggestions.map((s: string) => `<li>${s}</li>`).join('')}</ul>`
           : '<span style="color:green;">None</span>';
 
@@ -214,7 +226,7 @@ export default function Dashboard() {
           icon: 'info',
           title: 'Validation Result',
           html: `
-          <p><strong>Assessment:</strong> ${validated.assessment}</p>
+          <p><strong>Assessment:</strong> ${validated.assessment || ''}</p>
           <br/>
           <p><strong>Flagged Issues:</strong></p>
           ${flaggedIssuesList}
@@ -231,7 +243,6 @@ export default function Dashboard() {
           text: 'The response did not contain any validated data.'
         });
       }
-
     } catch (error: any) {
       const errorMsg = error?.response?.data?.message || 'Validation failed. Please check the request.';
 
@@ -330,7 +341,7 @@ export default function Dashboard() {
     setSelectedDate('');
     setProgramActiveDate('');
     setProgramCompletedDate('');
-    setRequestId(generateId('req_'));
+    setRequestId(generateObjectId());
   };
 
   const refreshAccessToken = async () => {
@@ -446,7 +457,7 @@ export default function Dashboard() {
       ];
     } else {
       const newHistory: ReportHistoryItem = {
-        id: requestId,
+        id: generateObjectId(),
         date: formatDateToDDMMYYYY(selectedDate),
         firstName,
         lastName,
@@ -1048,10 +1059,10 @@ export default function Dashboard() {
                           }
 
                           handleValidate(
-                            msg.text?.toString() || '',
+                            currentReport.report || '',
                             Cookies.get('access_token') || '',
                             currentReport.id, // report_id
-                            requestId         // request_id (from state)
+                            requestId           // request_id (from state)
                           );
                         }}
                         className="text-blue-500 hover:text-blue-600 p-1 cursor-pointer"
