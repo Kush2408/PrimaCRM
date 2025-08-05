@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { BsStopFill } from 'react-icons/bs';
 import { FiTrash2 } from 'react-icons/fi';
+import Swal from 'sweetalert2';
 import '../App.css'
 
 type MessageType = {
@@ -42,7 +43,7 @@ type ReportHistoryItem = {
   chat?: MessageType[];
 };
 
-const FIRST_NAMES = ['Cherie', 'Lauren', 'Dean', 'Maria', 'Miranda', 'Adrienne', 'John', 'Poonan', 'Brad', 'David', 'Samantha', 'Allister', 'Yujia', 'Minu', 'Sidd', 'Darren', 'Rebecca', 'Josephine', 'Jodie', 'Tommy', 'Roy', 'Glenn', 'Nick', 'Joey', 'Joseph'];
+const FIRST_NAMES = ['Cherie', 'Tatenda', 'Lauren', 'Dean', 'Maria', 'Miranda', 'Adrienne', 'John', 'Poonan', 'Brad', 'David', 'Samantha', 'Allister', 'Yujia', 'Minu', 'Sidd', 'Darren', 'Rebecca', 'Josephine', 'Jodie', 'Tommy', 'Roy', 'Glenn', 'Nick', 'Joey', 'Joseph'];
 const LAST_NAMES = ['Johnson', 'Smith', 'Williams', 'Popovic', 'Scott', 'Hecimovic', 'Chalmers', 'Hunt', 'Wang', 'Elgie', 'Caruana', 'Schwilk', 'Greenhill', 'Talbot', 'Fioravanti', 'Sharma', 'Cadd', 'Teslya', 'Gough', 'Cartwright', 'Vulic', 'Nallaiah', 'Troy'];
 const COACHES: Coach[] = [
   { id: 515, name: 'Andrea Van Der Merwe' },
@@ -99,6 +100,15 @@ function isExpired(expiry: string | undefined | null): boolean {
 function generateId(prefix: string = 'id_') {
   return prefix + Math.random().toString(36).substring(2, 10) + Date.now();
 }
+
+
+
+function formatDateToDDMMYYYY(dateStr: string) {
+  if (!dateStr) return '';
+  const [year, month, day] = dateStr.split('-');
+  return `${day}/${month}/${year}`;
+}
+
 
 function saveSelectionsToLocalStorage(data: {
   firstName: string;
@@ -171,6 +181,69 @@ export default function Dashboard() {
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  const handleValidate = async (text: string, token: string, reportId?: string, requestId?: string) => {
+    try {
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_BASE_URL}/report/validate-report`,
+        {
+          report_id: reportId,
+          request_id: requestId,
+          content: text
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      const validated = response.data?.validated_content;
+
+      if (validated) {
+        const flaggedIssuesList = validated.flagged_issues?.length
+          ? `<ul style="text-align: left;">${validated.flagged_issues.map((s: string) => `<li>${s}</li>`).join('')}</ul>`
+          : '<span style="color:green;">None</span>';
+
+        const suggestionsList = validated.suggestions?.length
+          ? `<ul style="text-align: left;">${validated.suggestions.map((s: string) => `<li>${s}</li>`).join('')}</ul>`
+          : '<span style="color:green;">None</span>';
+
+        Swal.fire({
+          icon: 'info',
+          title: 'Validation Result',
+          html: `
+          <p><strong>Assessment:</strong> ${validated.assessment}</p>
+          <br/>
+          <p><strong>Flagged Issues:</strong></p>
+          ${flaggedIssuesList}
+          <br/>
+          <p><strong>Suggestions:</strong></p>
+          ${suggestionsList}
+        `,
+          width: 600
+        });
+      } else {
+        Swal.fire({
+          icon: 'warning',
+          title: 'No validated content returned',
+          text: 'The response did not contain any validated data.'
+        });
+      }
+
+    } catch (error: any) {
+      const errorMsg = error?.response?.data?.message || 'Validation failed. Please check the request.';
+
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: errorMsg
+      });
+    }
+  };
+
+
 
 
   const handleStopGenerating = () => {
@@ -374,7 +447,7 @@ export default function Dashboard() {
     } else {
       const newHistory: ReportHistoryItem = {
         id: requestId,
-        date: selectedDate,
+        date: formatDateToDDMMYYYY(selectedDate),
         firstName,
         lastName,
         coachId: selectedCoach?.id ?? 0,
@@ -384,7 +457,7 @@ export default function Dashboard() {
         programDuration,
         programActiveDate,
         programCompletedDate,
-        report_date: selectedDate,
+        report_date: formatDateToDDMMYYYY(selectedDate),
         note,
         report: '',
         chat: [secondaryNoteMsg],
@@ -544,8 +617,8 @@ export default function Dashboard() {
         program_type: programType,
         program_duration: programDuration,
         initial_meeting_date: null,
-        program_active_date: programActiveDate,
-        program_completed_date: programCompletedDate,
+        program_active_date: formatDateToDDMMYYYY(programActiveDate),
+        program_completed_date: formatDateToDDMMYYYY(programCompletedDate),
       },
       notes: notes,
       previous_reports: previous_reports,
@@ -554,7 +627,7 @@ export default function Dashboard() {
       output_config: { type: 'TEXT' },
       status: 'completed',
       created_by: createdBy,
-      report_date: selectedDate, // ✅ Still required
+      report_date: formatDateToDDMMYYYY(selectedDate), // ✅ Still required
     };
 
     abortControllerRef.current = new AbortController(); // ✅ Assign controller
@@ -628,7 +701,7 @@ export default function Dashboard() {
         const updatedItem = { ...reportHistory[matchingIndex] };
         updatedItem.chat = [...(updatedItem.chat || []), ...newChatMessages];
         updatedItem.report = (updatedItem.report || '') + '\n\n' + generatedReport.trim();
-        updatedItem.date = selectedDate;
+        updatedItem.date = formatDateToDDMMYYYY(selectedDate);
         updatedItem.note = note;
 
         updatedHistory = [
@@ -638,7 +711,7 @@ export default function Dashboard() {
       } else {
         const newHistory: ReportHistoryItem = {
           id: requestId,
-          date: selectedDate,
+          date: formatDateToDDMMYYYY(selectedDate),
           firstName,
           lastName,
           coachId: selectedCoach.id,
@@ -648,7 +721,7 @@ export default function Dashboard() {
           programDuration,
           programActiveDate,
           programCompletedDate,
-          report_date: selectedDate,
+          report_date: formatDateToDDMMYYYY(selectedDate),
           note,
           report: generatedReport.trim(),
           chat: newChatMessages,
@@ -939,20 +1012,54 @@ export default function Dashboard() {
                 {msg.sender === 'bot' &&
                   msg.text !== '👋 Hi there! Please select your details and enter your prompt to generate the report.' &&
                   msg.text && (
-                    <button
-                      onClick={async () => {
-                        try {
-                          await navigator.clipboard.writeText(msg.text?.toString() || '');
-                          toast.success('Message copied!');
-                        } catch (error) {
-                          toast.error('Failed to copy message');
-                          console.error('Copy error:', error);
-                        }
-                      }}
-                      className="absolute top-2 right-2 text-xs text-gray-600 bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded"
-                    >
-                      📋Copy
-                    </button>
+                    <div className="absolute top-2 right-2 flex flex-row items-center space-x-2">
+                      {/* Copy Button */}
+                      <button
+                        onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(msg.text?.toString() || '');
+                            toast.success('Message copied!');
+                          } catch (error) {
+                            toast.error('Failed to copy message');
+                            console.error('Copy error:', error);
+                          }
+                        }}
+                        className="text-xs text-gray-600 bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded cursor-pointer"
+                      >
+                        📋 Copy
+                      </button>
+
+                      {/* Validate Button (ℹ️ Icon only) */}
+                      <button
+                        onClick={() => {
+                          const currentReport = reportHistory.find(
+                            (item) =>
+                              item.firstName === firstName &&
+                              item.date === formatDateToDDMMYYYY(selectedDate)
+                          );
+
+                          if (!currentReport || !currentReport.id) {
+                            Swal.fire({
+                              icon: 'error',
+                              title: 'Validation Error',
+                              text: 'No valid report found for this message. Please generate and save a report first.',
+                            });
+                            return;
+                          }
+
+                          handleValidate(
+                            msg.text?.toString() || '',
+                            Cookies.get('access_token') || '',
+                            currentReport.id, // report_id
+                            requestId         // request_id (from state)
+                          );
+                        }}
+                        className="text-blue-500 hover:text-blue-600 p-1 cursor-pointer"
+                        title="Validate"
+                      >
+                        <span className="text-lg">ℹ️</span>
+                      </button>
+                    </div>
                   )}
                 <div className="prose prose-sm max-w-full text-sm sm:text-base">
                   <ReactMarkdown>{msg.text || ''}</ReactMarkdown>
