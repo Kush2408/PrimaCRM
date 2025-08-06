@@ -107,6 +107,10 @@
   
   📋 Report List
   <img width="1917" height="872" alt="Screenshot 2025-07-17 103336" src="https://github.com/user-attachments/assets/e3721769-5b86-44b8-bab7-197c8ae6fdfb" />
+
+   ✅ Validation Before Finalization
+ 
+
   
   📌 Notes
   This module is fully production-tested and used in live coaching environments.
