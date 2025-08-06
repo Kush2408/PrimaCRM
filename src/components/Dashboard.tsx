@@ -187,75 +187,139 @@ export default function Dashboard() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleValidate = async (text: string, token: string, reportId?: string, requestId?: string) => {
+
+  let isValidating = false;
+  const handleValidate = async (
+    text: string,
+    token: string,
+    reportId?: string,
+    requestId?: string
+  ) => {
+    if (isValidating) {
+      return; // Prevent duplicate call
+    }
+
+    isValidating = true;
+    const loadingToastId = toast.loading('Validating report...');
+
     try {
       const response = await axios.post(
         `${import.meta.env.VITE_API_BASE_URL}/report/validate-report`,
         {
           report_id: reportId,
           request_id: requestId,
-          content: text
+          content: text,
         },
         {
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`
-          }
+            Authorization: `Bearer ${token}`,
+          },
         }
       );
 
-      console.log('API response:', response.data);
-
       const validated = response.data?.data?.validated_content;
-      console.log('API validated_content:', validated);
-      // Always show modal if validated_content is present (even if arrays are empty)
+
+      toast.dismiss(loadingToastId); // remove the loading toast
+
       if (
         validated &&
         typeof validated === 'object' &&
-        ('assessment' in validated && 'flagged_issues' in validated && 'suggestions' in validated)
+        'assessment' in validated &&
+        'flagged_issues' in validated &&
+        'suggestions' in validated
       ) {
-        const flaggedIssuesList = Array.isArray(validated.flagged_issues) && validated.flagged_issues.length
-          ? `<ul style="text-align: left;">${validated.flagged_issues.map((s: string) => `<li>${s}</li>`).join('')}</ul>`
-          : '<span style="color:green;">None</span>';
+        toast.success('Report validated successfully!');
 
-        const suggestionsList = Array.isArray(validated.suggestions) && validated.suggestions.length
-          ? `<ul style="text-align: left;">${validated.suggestions.map((s: string) => `<li>${s}</li>`).join('')}</ul>`
-          : '<span style="color:green;">None</span>';
+        const flaggedIssuesList =
+          Array.isArray(validated.flagged_issues) && validated.flagged_issues.length
+            ? `<ul style="text-align: left; padding-left: 1.2rem; color: #dc3545; font-size: 14px; line-height: 1.6;">
+              ${validated.flagged_issues.map((s: string) => `<li>⚠️ ${s}</li>`).join('')}
+            </ul>`
+            : `<p style="color: #28a745; font-weight: 500; font-size: 14px; margin: 0; display: flex; align-items: center;">✅ None</p>`;
+
+        const suggestionsList =
+          Array.isArray(validated.suggestions) && validated.suggestions.length
+            ? `<ul style="text-align: left; padding-left: 1.2rem; color: #374151; font-size: 14px; line-height: 1.6;">
+              ${validated.suggestions.map((s: string) => `<li><span style="margin-right: 6px;">💡</span>${s}</li>`).join('')}
+            </ul>`
+            : `<p style="color: #28a745; font-weight: 500; font-size: 14px; margin: 0; display: flex; align-items: center;">✅ None</p>`;
 
         Swal.fire({
           icon: 'info',
-          title: 'Validation Result',
+          title: `<span style="font-family: 'Poppins', sans-serif; font-size: 20px; font-weight: 600; color: #1e3a8a;">📝 Validation Result</span>`,
           html: `
-          <p><strong>Assessment:</strong> ${validated.assessment || ''}</p>
-          <br/>
-          <p><strong>Flagged Issues:</strong></p>
-          ${flaggedIssuesList}
-          <br/>
-          <p><strong>Suggestions:</strong></p>
-          ${suggestionsList}
-        `,
-          width: 600
+            <div style="
+              font-family: 'Poppins', sans-serif;
+              font-size: 14px;
+              color: #1f2937;
+              text-align: left;
+              max-height: 340px;
+              overflow-y: auto;
+              padding-right: 6px;
+              scrollbar-width: none; /* Firefox */
+            ">
+
+              <style>
+                ::-webkit-scrollbar { display: none; } /* Chrome, Safari */
+              </style>
+
+              <p style="margin-bottom: 12px;">
+                <strong style="color: #0d6efd;">Assessment:</strong><br/>
+                <span style="color: #374151;">${validated.assessment || 'N/A'}</span>
+              </p>
+
+              <hr style="border-top: 1px solid #e5e7eb; margin: 14px 0;" />
+
+              <p style="margin-bottom: 6px;"><strong style="color: #dc3545;">Flagged Issues:</strong></p>
+              ${flaggedIssuesList}
+
+              <hr style="border-top: 1px solid #e5e7eb; margin: 14px 0; margin-right: 5px;" />
+
+              <p style="margin-bottom: 0;"><strong style="color: #198754;">Suggestions:</strong></p>
+              <div style="margin-top: 2px;">${suggestionsList}</div>
+
+            </div>
+          `,
+          width: 550,
+          padding: '1.4rem 1.6rem',
+          background: '#ffffff',
+          customClass: {
+            popup: 'swal2-rounded-popup',
+          },
+          showClass: {
+            popup: 'animate__animated animate__fadeInDown animate__faster',
+          },
+          hideClass: {
+            popup: 'animate__animated animate__fadeOutUp animate__faster',
+          },
+          confirmButtonColor: '#6366f1',
+          confirmButtonText: 'OK',
         });
       } else {
         Swal.fire({
           icon: 'warning',
           title: 'No validated content returned',
-          text: 'The response did not contain any validated data.'
+          text: 'The response did not contain any validated data.',
         });
       }
     } catch (error: any) {
-      const errorMsg = error?.response?.data?.message || 'Validation failed. Please check the request.';
+      toast.dismiss(loadingToastId);
+      const errorMsg =
+        error?.response?.data?.message ||
+        'Validation failed. Please check the request.';
+
+      toast.error(errorMsg);
 
       Swal.fire({
         icon: 'error',
         title: 'Error',
-        text: errorMsg
+        text: errorMsg,
       });
+    } finally {
+      isValidating = false;
     }
   };
-
-
-
 
   const handleStopGenerating = () => {
     if (abortControllerRef.current) {
@@ -1023,7 +1087,7 @@ export default function Dashboard() {
                 {msg.sender === 'bot' &&
                   msg.text !== '👋 Hi there! Please select your details and enter your prompt to generate the report.' &&
                   msg.text && (
-                    <div className="absolute top-2 right-2 flex flex-row items-center space-x-2">
+                   <div className="absolute bottom-0 right-2 flex flex-row items-center space-x-1">
                       {/* Copy Button */}
                       <button
                         onClick={async () => {
