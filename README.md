@@ -109,7 +109,8 @@
   <img width="1917" height="872" alt="Screenshot 2025-07-17 103336" src="https://github.com/user-attachments/assets/e3721769-5b86-44b8-bab7-197c8ae6fdfb" />
 
    ✅ Validation Before Finalization
- 
+  <img width="1917" height="866" alt="Screenshot 2025-08-06 114157" src="https://github.com/user-attachments/assets/c33a68e1-6e4a-4586-b180-3d6dad62c97a" />
+
 
   
   📌 Notes
