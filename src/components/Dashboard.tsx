@@ -13,6 +13,7 @@ import { FiTrash2 } from 'react-icons/fi';
 import Swal from 'sweetalert2';
 import '../App.css'
 
+
 type MessageType = {
   sender: 'user' | 'bot';
   text?: string;
@@ -42,6 +43,22 @@ type ReportHistoryItem = {
   report: string;
   chat?: MessageType[];
 };
+
+type ValidationHistoryItem = {
+  id: string;
+  reportId: string;
+  date: string;
+  firstName: string;
+  lastName: string;
+  coachName: string;
+  programName: string;
+  validation: {
+    assessment: string;
+    flagged_issues: string[];
+    suggestions: string[];
+  };
+};
+
 
 const FIRST_NAMES = ['Cherie', 'Tatenda', 'Lauren', 'Dean', 'Maria', 'Miranda', 'Adrienne', 'John', 'Poonan', 'Brad', 'David', 'Samantha', 'Allister', 'Yujia', 'Minu', 'Sidd', 'Darren', 'Rebecca', 'Josephine', 'Jodie', 'Tommy', 'Roy', 'Glenn', 'Nick', 'Joey', 'Joseph'];
 const LAST_NAMES = ['Johnson', 'Smith', 'Williams', 'Popovic', 'Scott', 'Hecimovic', 'Chalmers', 'Hunt', 'Wang', 'Elgie', 'Caruana', 'Schwilk', 'Greenhill', 'Talbot', 'Fioravanti', 'Sharma', 'Cadd', 'Teslya', 'Gough', 'Cartwright', 'Vulic', 'Nallaiah', 'Troy'];
@@ -97,16 +114,17 @@ function isExpired(expiry: string | undefined | null): boolean {
   return false;
 }
 
-// function generateId(prefix: string = 'id_') {
-//   return prefix + Math.random().toString(36).substring(2, 10) + Date.now();
-// }
-
-function generateObjectId() {
-  // Generates a random 24-character hex string
-  return Array.from({ length: 24 }, () =>
-    Math.floor(Math.random() * 16).toString(16)
-  ).join('');
+function generateReportId() {
+  // Generates unique id like rep_6ec5341e
+  return "rep_" + Math.random().toString(16).slice(2, 10);
 }
+
+function generateRequestId() {
+  // Generates unique id like rep_6ec5341e
+  return "req_" + Math.random().toString(16).slice(2, 10);
+}
+
+
 
 function formatDateToDDMMYYYY(dateStr: string) {
   if (!dateStr) return '';
@@ -154,6 +172,21 @@ function getReportHistory(): ReportHistoryItem[] {
   }
 }
 
+function saveValidationHistory(history: ValidationHistoryItem[]) {
+  localStorage.setItem('prima_crm_validation_history', JSON.stringify(history));
+}
+
+function getValidationHistory(): ValidationHistoryItem[] {
+  try {
+    const data = localStorage.getItem('prima_crm_validation_history');
+    if (!data) return [];
+    return JSON.parse(data);
+  } catch {
+    return [];
+  }
+}
+
+
 export default function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [input, setInput] = useState('');
@@ -170,7 +203,11 @@ export default function Dashboard() {
   const [programActiveDate, setProgramActiveDate] = useState('');
   const [programCompletedDate, setProgramCompletedDate] = useState('');
 
-  const [requestId, setRequestId] = useState(generateObjectId());
+  const [validationData, setValidationData] = useState<any>(null); // Stores validated content
+  const [validationHistory, setValidationHistory] = useState<ValidationHistoryItem[]>(getValidationHistory());
+
+
+  // const [requestId, setRequestId] = useState(generateObjectId());
   const [candidateId] = useState(() => Math.floor(Math.random() * 100000) + 1);
   const [createdBy] = useState(1);
   const [reportHistory, setReportHistory] = useState<ReportHistoryItem[]>(getReportHistory());
@@ -189,14 +226,14 @@ export default function Dashboard() {
 
 
   let isValidating = false;
+
   const handleValidate = async (
     text: string,
     token: string,
     reportId?: string,
-    requestId?: string
   ) => {
     if (isValidating) {
-      return; // Prevent duplicate call
+      return;
     }
 
     isValidating = true;
@@ -207,7 +244,6 @@ export default function Dashboard() {
         `${import.meta.env.VITE_API_BASE_URL}/report/validate-report`,
         {
           report_id: reportId,
-          request_id: requestId,
           content: text,
         },
         {
@@ -220,7 +256,7 @@ export default function Dashboard() {
 
       const validated = response.data?.data?.validated_content;
 
-      toast.dismiss(loadingToastId); // remove the loading toast
+      toast.dismiss(loadingToastId);
 
       if (
         validated &&
@@ -230,72 +266,27 @@ export default function Dashboard() {
         'suggestions' in validated
       ) {
         toast.success('Report validated successfully!');
+        setValidationData(validated);
+        const newValidation: ValidationHistoryItem = {
+          id: generateReportId(),
+          reportId: reportId || '',
 
-        const flaggedIssuesList =
-          Array.isArray(validated.flagged_issues) && validated.flagged_issues.length
-            ? `<ul style="text-align: left; padding-left: 1.2rem; color: #dc3545; font-size: 14px; line-height: 1.6;">
-              ${validated.flagged_issues.map((s: string) => `<li>⚠️ ${s}</li>`).join('')}
-            </ul>`
-            : `<p style="color: #28a745; font-weight: 500; font-size: 14px; margin: 0; display: flex; align-items: center;">✅ None</p>`;
-
-        const suggestionsList =
-          Array.isArray(validated.suggestions) && validated.suggestions.length
-            ? `<ul style="text-align: left; padding-left: 1.2rem; color: #374151; font-size: 14px; line-height: 1.6;">
-              ${validated.suggestions.map((s: string) => `<li><span style="margin-right: 6px;">💡</span>${s}</li>`).join('')}
-            </ul>`
-            : `<p style="color: #28a745; font-weight: 500; font-size: 14px; margin: 0; display: flex; align-items: center;">✅ None</p>`;
-
-        Swal.fire({
-          icon: 'info',
-          title: `<span style="font-family: 'Poppins', sans-serif; font-size: 20px; font-weight: 600; color: #1e3a8a;">📝 Validation Result</span>`,
-          html: `
-            <div style="
-              font-family: 'Poppins', sans-serif;
-              font-size: 14px;
-              color: #1f2937;
-              text-align: left;
-              max-height: 340px;
-              overflow-y: auto;
-              padding-right: 6px;
-              scrollbar-width: none; /* Firefox */
-            ">
-
-              <style>
-                ::-webkit-scrollbar { display: none; } /* Chrome, Safari */
-              </style>
-
-              <p style="margin-bottom: 12px;">
-                <strong style="color: #0d6efd;">Assessment:</strong><br/>
-                <span style="color: #374151;">${validated.assessment || 'N/A'}</span>
-              </p>
-
-              <hr style="border-top: 1px solid #e5e7eb; margin: 14px 0;" />
-
-              <p style="margin-bottom: 6px;"><strong style="color: #dc3545;">Flagged Issues:</strong></p>
-              ${flaggedIssuesList}
-
-              <hr style="border-top: 1px solid #e5e7eb; margin: 14px 0; margin-right: 5px;" />
-
-              <p style="margin-bottom: 0;"><strong style="color: #198754;">Suggestions:</strong></p>
-              <div style="margin-top: 2px;">${suggestionsList}</div>
-
-            </div>
-          `,
-          width: 550,
-          padding: '1.4rem 1.6rem',
-          background: '#ffffff',
-          customClass: {
-            popup: 'swal2-rounded-popup',
+          date: new Date().toISOString(),
+          firstName,
+          lastName,
+          coachName: selectedCoach?.name || '',
+          programName,
+          validation: {
+            assessment: validated.assessment || '',
+            flagged_issues: validated.flagged_issues || [],
+            suggestions: validated.suggestions || [],
           },
-          showClass: {
-            popup: 'animate__animated animate__fadeInDown animate__faster',
-          },
-          hideClass: {
-            popup: 'animate__animated animate__fadeOutUp animate__faster',
-          },
-          confirmButtonColor: '#6366f1',
-          confirmButtonText: 'OK',
-        });
+        };
+
+        const updatedValidationHistory = [newValidation, ...validationHistory];
+        setValidationHistory(updatedValidationHistory);
+        saveValidationHistory(updatedValidationHistory);
+
       } else {
         Swal.fire({
           icon: 'warning',
@@ -321,6 +312,109 @@ export default function Dashboard() {
     }
   };
 
+
+  const handleShowValidationModal = () => {
+    if (!validationData) {
+      toast.error('Validation data not available yet.');
+      return;
+    }
+
+    const getListHTML = (items: string[], icon: string, color: string) => {
+      return items && items.length
+        ? `<ul style="text-align: left; padding-left: 1.2rem; color: ${color}; font-size: 14px; line-height: 1.6;">
+          ${items.map((s) => `<li>${icon} ${s}</li>`).join('')}
+        </ul>`
+        : `<p style="color: #28a745; font-weight: 500; font-size: 14px; margin: 0; display: flex; align-items: center;">✅ None</p>`;
+    };
+
+    const flaggedIssuesList = getListHTML(
+      validationData.flagged_issues || [],
+      '⚠️',
+      '#dc3545'
+    );
+
+    const suggestionsList = getListHTML(
+      validationData.suggestions || [],
+      '💡',
+      '#374151'
+    );
+
+    Swal.fire({
+      icon: 'info',
+      title: `<span style="font-family: 'Poppins', sans-serif; font-size: 20px; font-weight: 600; color: #1e3a8a;">📝 Validation Result</span>`,
+      html: `
+      <div style="
+        font-family: 'Poppins', sans-serif;
+        font-size: 14px;
+        color: #1f2937;
+        text-align: left;
+        max-height: 340px;
+        overflow-y: auto;
+        padding-right: 6px;
+        scrollbar-width: none;
+      ">
+        <style> ::-webkit-scrollbar { display: none; } </style>
+
+        <p style="margin-bottom: 12px;">
+          <strong style="color: #0d6efd;">Assessment:</strong><br/>
+          <span style="color: #374151;">${validationData.assessment || 'N/A'}</span>
+        </p>
+
+        <hr style="border-top: 1px solid #e5e7eb; margin: 14px 0;" />
+        <p style="margin-bottom: 6px;"><strong style="color: #dc3545;">Flagged Issues:</strong></p>
+        ${flaggedIssuesList}
+
+        <hr style="border-top: 1px solid #e5e7eb; margin: 14px 0;" />
+        <p style="margin-bottom: 0;"><strong style="color: #198754;">Suggestions:</strong></p>
+        <div style="margin-top: 2px;">${suggestionsList}</div>
+
+        <div style="margin-top: 20px; text-align: right;">
+          <button id="copy-json-btn" style="
+            background-color: #e0e7ff;
+            color: #1e3a8a;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            margin-top: 10px;
+          ">📋 Copy</button>
+        </div>
+      </div>
+    `,
+      width: 550,
+      padding: '1.4rem 1.6rem',
+      background: '#ffffff',
+      customClass: {
+        popup: 'swal2-rounded-popup',
+      },
+      showClass: {
+        popup: 'animate__animated animate__fadeInDown animate__faster',
+      },
+      hideClass: {
+        popup: 'animate__animated animate__fadeOutUp animate__faster',
+      },
+      confirmButtonColor: '#6366f1',
+      confirmButtonText: 'OK',
+      didOpen: () => {
+        const copyBtn = document.getElementById('copy-json-btn');
+        if (copyBtn) {
+          copyBtn.addEventListener('click', async () => {
+            try {
+              await navigator.clipboard.writeText(JSON.stringify(validationData, null, 2));
+              copyBtn.textContent = '✅ Copied!';
+              setTimeout(() => {
+                copyBtn.textContent = '📋 Copy';
+              }, 2000);
+            } catch {
+              copyBtn.textContent = '❌ Failed';
+            }
+          });
+        }
+      }
+    });
+  };
+
   const handleStopGenerating = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -335,6 +429,7 @@ export default function Dashboard() {
   useEffect(() => {
     startNewChat();
   }, []);
+
 
   useEffect(() => {
     if (!loading) return;
@@ -359,33 +454,6 @@ export default function Dashboard() {
     programActiveDate,
     programCompletedDate]);
 
-  // useEffect(() => {
-  //   const interval = setInterval(async () => {
-  //     const accessTokenExpiry = Cookies.get('access_token_expiry');
-  //     const refreshTokenExpiry = Cookies.get('refresh_token_expiry');
-  //     if (isExpired(refreshTokenExpiry)) {
-  //       Cookies.remove('access_token');
-  //       Cookies.remove('refresh_token');
-  //       Cookies.remove('access_token_expiry');
-  //       Cookies.remove('refresh_token_expiry');
-  //       if (!loggedOutRef.current) {
-  //         loggedOutRef.current = true;
-  //         navigate('/login');
-  //       }
-  //       return;
-  //     }
-  //     if (
-  //       accessTokenExpiry &&
-  //       new Date(accessTokenExpiry.replace(/\.\d+/, '').replace(/\+00:00$/, 'Z')).getTime() -
-  //       Date.now() <
-  //       60000
-  //     ) {
-  //       await refreshAccessToken();
-  //     }
-  //   }, 30000);
-
-  //   return () => clearInterval(interval);
-  // }, [navigate]);
 
   const startNewChat = () => {
     setMessages([
@@ -405,7 +473,7 @@ export default function Dashboard() {
     setSelectedDate('');
     setProgramActiveDate('');
     setProgramCompletedDate('');
-    setRequestId(generateObjectId());
+    // setRequestId('');
   };
 
   const refreshAccessToken = async () => {
@@ -451,25 +519,8 @@ export default function Dashboard() {
 
   const callWithAuth = async (apiCall: (token: string) => Promise<any>) => {
     let token = Cookies.get('access_token');
-    // const accessTokenExpiry = Cookies.get('access_token_expiry');
-    // const refreshTokenExpiry = Cookies.get('refresh_token_expiry');
-    // if (!token || isExpired(accessTokenExpiry)) {
-    //   token = await refreshAccessToken();
-    //   if (!token) return null;
-    // }
-    // if (isExpired(refreshTokenExpiry)) {
-    //   Cookies.remove('access_token');
-    //   Cookies.remove('refresh_token');
-    //   Cookies.remove('access_token_expiry');
-    //   Cookies.remove('refresh_token_expiry');
-    //   if (!loggedOutRef.current) {
-    //     loggedOutRef.current = true;
-    //     navigate('/login');
-    //   }
-    //   return null;
-    // }
     try {
-      return await apiCall(token);
+      return await apiCall(token!);
     } catch (err: any) {
       if (err?.response?.status === 401) {
         token = await refreshAccessToken();
@@ -521,7 +572,7 @@ export default function Dashboard() {
       ];
     } else {
       const newHistory: ReportHistoryItem = {
-        id: generateObjectId(),
+        id: generateRequestId(),
         date: formatDateToDDMMYYYY(selectedDate),
         firstName,
         lastName,
@@ -543,7 +594,6 @@ export default function Dashboard() {
     setReportHistory(updatedHistory);
     saveReportHistory(updatedHistory);
   };
-
 
 
   const handleSendMessage = async (customInput?: string, isSecondary = false) => {
@@ -656,7 +706,7 @@ export default function Dashboard() {
         report.chat.forEach((chatEntry, index) => {
           if (chatEntry?.sender === 'bot' && typeof chatEntry.text === 'string') {
             previous_reports.push(chatEntry.text.trim());
-            previous_reports_id.push(`${report.id}_msg_${index}`);
+            previous_reports_id.push(`${report.id}_rep_${index}`);
           }
         });
       }
@@ -675,6 +725,57 @@ export default function Dashboard() {
       .filter((text): text is string => !!text);
 
     const notes = [...currentMonthUserNotes, note];
+
+    // const payload = {
+    //   request_id: requestId,
+    //   candidate: {
+    //     id: candidateId,
+    //     first_name: firstName,
+    //     last_name: lastName,
+    //   },
+    //   coach: {
+    //     id: selectedCoach.id,
+    //     name: selectedCoach.name,
+    //   },
+    //   program: {
+    //     program_name: programName,
+    //     program_type: programType,
+    //     program_duration: programDuration,
+    //     initial_meeting_date: null,
+    //     program_active_date: formatDateToDDMMYYYY(programActiveDate),
+    //     program_completed_date: formatDateToDDMMYYYY(programCompletedDate),
+    //   },
+    //   notes: notes,
+    //   previous_reports: previous_reports,
+    //   parent_report_id: null,
+    //   previous_reports_id: previous_reports_id,
+    //   output_config: { type: 'TEXT' },
+    //   status: 'completed',
+    //   created_by: createdBy,
+    //   report_date: formatDateToDDMMYYYY(selectedDate), // ✅ Still required
+    // };
+
+    const allReports = reportHistory
+      .filter(r => r.firstName.toLowerCase() === firstName.toLowerCase())
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    let parentReportId: string | null = null;
+    let previousReport: string[] = [];
+    let previousReportId: string[] = [];
+
+    if (allReports.length >= 1) {
+      const lastReport = allReports[allReports.length - 1]; // immediate previous
+      parentReportId = lastReport.id;
+
+      if (allReports.length >= 2) {
+        const reportsBeforeLast = allReports.slice(0, -1); // all except last
+        previousReport = reportsBeforeLast.map(r => r.report);
+        previousReportId = reportsBeforeLast.map(r => r.id);
+      }
+    }
+
+
+    const requestId = generateRequestId();
 
     const payload = {
       request_id: requestId,
@@ -695,15 +796,16 @@ export default function Dashboard() {
         program_active_date: formatDateToDDMMYYYY(programActiveDate),
         program_completed_date: formatDateToDDMMYYYY(programCompletedDate),
       },
-      notes: notes,
-      previous_reports: previous_reports,
-      parent_report_id: previousUserReports[0]?.id || null,
-      previous_reports_id: previous_reports_id,
-      output_config: { type: 'TEXT' },
-      status: 'completed',
+      notes,
+      previous_report: previousReport,
+      previous_report_id: previousReportId,
+      parent_report_id: parentReportId,
+      output_config: { type: "TEXT" },
+      status: "completed",
       created_by: createdBy,
-      report_date: formatDateToDDMMYYYY(selectedDate), // ✅ Still required
+      report_date: formatDateToDDMMYYYY(selectedDate),
     };
+
 
     abortControllerRef.current = new AbortController(); // ✅ Assign controller
     try {
@@ -719,45 +821,42 @@ export default function Dashboard() {
       );
 
       if (!result) return;
+      // console.log('Generated report:', result);
+      const reportData = result;
 
-      if (result.success && Array.isArray(result.content) && result.content.length > 0) {
+      if (
+        reportData.content.length > 0
+      ) {
         let hasValidSegment = false;
 
-        result.content.forEach((segment: any) => {
+        reportData.content.forEach((segment: any) => {
           if (
             segment &&
-            typeof segment.report_segment === 'string' &&
-            segment.report_segment.trim() !== ''
+            typeof segment.report_segment === "string" &&
+            segment.report_segment.trim() !== ""
           ) {
-            const formatted = segment.report_segment;
+            const formatted = segment.report_segment.trim();
             const botMsg: MessageType = {
-              sender: 'bot',
-              type: 'text',
+              sender: "bot",
+              type: "text",
               text: formatted,
               date: new Date(selectedDate).toISOString(),
             };
 
-            newMessages.push({
-              sender: 'bot' as const,
-              type: 'text' as const,
-              text: botMsg.text,
-            });
+            newMessages.push(botMsg);
+            botMsgs.push(botMsg);
+            generatedReport += formatted + "\n\n";
 
-            botMsgs.push({
-              sender: 'bot' as const,
-              type: 'text' as const,
-              text: botMsg.text,
-            });
-
-            generatedReport += formatted + '\n\n';
             hasValidSegment = true;
+            // console.log("Valid segment found:", generatedReport);
+            // console.log(" botMsgs", botMsgs);
+            // console.log(" newMessages", newMessages);
           }
         });
 
         if (!hasValidSegment) {
           toast.error("Report generated but returned no usable content.");
         }
-
       } else {
         toast.error("Report generated but returned no content.");
       }
@@ -771,6 +870,8 @@ export default function Dashboard() {
       );
 
       let updatedHistory: ReportHistoryItem[] = [];
+      let newReportId = generateReportId();
+
 
       if (matchingIndex !== -1) {
         const updatedItem = { ...reportHistory[matchingIndex] };
@@ -779,13 +880,15 @@ export default function Dashboard() {
         updatedItem.date = formatDateToDDMMYYYY(selectedDate);
         updatedItem.note = note;
 
+        newReportId = updatedItem.id;
         updatedHistory = [
           updatedItem,
           ...reportHistory.filter((_, i) => i !== matchingIndex),
         ];
       } else {
+        newReportId = generateReportId();
         const newHistory: ReportHistoryItem = {
-          id: requestId,
+          id: newReportId,
           date: formatDateToDDMMYYYY(selectedDate),
           firstName,
           lastName,
@@ -804,9 +907,20 @@ export default function Dashboard() {
 
         updatedHistory = [newHistory, ...reportHistory];
       }
-
+      setMessages((prev) => [...prev, ...newMessages]);
+      setLoading(false);
       setReportHistory(updatedHistory);
       saveReportHistory(updatedHistory);
+
+      if (generatedReport.trim()) {
+        await handleValidate(
+          generatedReport.trim(),
+          Cookies.get('access_token') || '',
+          newReportId, // ✅ Use the unique report id
+          // requestId,
+        );
+      }
+
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || '❌ Failed to generate report.';
       newMessages.push({
@@ -815,7 +929,6 @@ export default function Dashboard() {
         text: errorMessage,
       });
     } finally {
-      setMessages((prev) => [...prev, ...newMessages]);
       setLoading(false);
     }
   };
@@ -843,9 +956,9 @@ export default function Dashboard() {
               secondary: '#e7f5ec',
             },
             style: {
-              background: '#f0fdf4',
-              border: '1px solid #bbf7d0',
-              color: '#166534',
+              background: '#f0f9ff',
+              border: '1px solid #bae6fd',
+              color: '#075985',
             },
           },
           error: {
@@ -1077,7 +1190,6 @@ export default function Dashboard() {
                 </div>
               )}
 
-
               <div
                 className={`relative max-w-[95%] sm:max-w-[80%] whitespace-pre-wrap break-words px-4 py-3 rounded-2xl transition-all duration-300 ease-out shadow-md ${msg.sender === 'user'
                   ? 'bg-blue-100 self-end ml-auto text-blue-800'
@@ -1087,7 +1199,7 @@ export default function Dashboard() {
                 {msg.sender === 'bot' &&
                   msg.text !== '👋 Hi there! Please select your details and enter your prompt to generate the report.' &&
                   msg.text && (
-                   <div className="absolute bottom-0 right-2 flex flex-row items-center space-x-1">
+                    <div className="absolute bottom-0 right-2 flex flex-row items-center space-x-1">
                       {/* Copy Button */}
                       <button
                         onClick={async () => {
@@ -1104,36 +1216,15 @@ export default function Dashboard() {
                         📋 Copy
                       </button>
 
-                      {/* Validate Button (ℹ️ Icon only) */}
+                      {/* Validate Button */}
                       <button
-                        onClick={() => {
-                          const currentReport = reportHistory.find(
-                            (item) =>
-                              item.firstName === firstName &&
-                              item.date === formatDateToDDMMYYYY(selectedDate)
-                          );
-
-                          if (!currentReport || !currentReport.id) {
-                            Swal.fire({
-                              icon: 'error',
-                              title: 'Validation Error',
-                              text: 'No valid report found for this message. Please generate and save a report first.',
-                            });
-                            return;
-                          }
-
-                          handleValidate(
-                            currentReport.report || '',
-                            Cookies.get('access_token') || '',
-                            currentReport.id, // report_id
-                            requestId           // request_id (from state)
-                          );
-                        }}
+                        onClick={handleShowValidationModal}
                         className="text-blue-500 hover:text-blue-600 p-1 cursor-pointer"
                         title="Validate"
                       >
                         <span className="text-lg">ℹ️</span>
                       </button>
+
                     </div>
                   )}
                 <div className="prose prose-sm max-w-full text-sm sm:text-base">
@@ -1206,7 +1297,7 @@ export default function Dashboard() {
               </button>
 
               <button
-                onClick={() => handleSendMessage()} // ✅ wrapped in arrow function to match expected type
+                onClick={async () => await handleSendMessage()} // ✅ wrapped in arrow function to match expected type
                 disabled={loading}
                 className="bg-blue-400 hover:bg-indigo-500 p-3 rounded-full shadow-md text-white"
               >

@@ -10,15 +10,16 @@ export const reportService = {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-         signal, 
+        signal,
       });
 
-      if (res.status === 200 && Array.isArray(res.data?.data) && res.data.data.length > 0) {
+      if (res.status === 200 && res.data?.data) {
         return {
           success: true,
-          content: res.data.data[0].content,
+          content: res.data.data, // directly use object
         };
       }
+
 
       return { success: false, message: 'Unexpected response from server' };
     } catch (err: any) {
