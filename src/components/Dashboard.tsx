@@ -53,9 +53,9 @@ type ValidationHistoryItem = {
   coachName: string;
   programName: string;
   validation: {
-    assessment: string;
-    flagged_issues: string[];
-    suggestions: string[];
+    refined_narrative: string;
+    compliance_improvements: string[];
+    refinement_summary: string;
   };
 };
 
@@ -186,6 +186,19 @@ function getValidationHistory(): ValidationHistoryItem[] {
   }
 }
 
+function saveReportChains(map: Record<string, { ids: string[]; contents: string[] }>) {
+  localStorage.setItem('prima_crm_report_chains', JSON.stringify(map));
+}
+
+function getReportChains(): Record<string, { ids: string[]; contents: string[] }> {
+  try {
+    const data = localStorage.getItem('prima_crm_report_chains');
+    return data ? JSON.parse(data) : {};
+  } catch {
+    return {};
+  }
+}
+
 
 export default function Dashboard() {
   const [loading, setLoading] = useState(false);
@@ -205,8 +218,9 @@ export default function Dashboard() {
 
   const [validationData, setValidationData] = useState<any>(null); // Stores validated content
   const [validationHistory, setValidationHistory] = useState<ValidationHistoryItem[]>(getValidationHistory());
-
-
+  const [reportChains, setReportChains] = useState<Record<string, { ids: string[]; contents: string[] }>>(
+    getReportChains()
+  );
   // const [requestId, setRequestId] = useState(generateObjectId());
   const [candidateId] = useState(() => Math.floor(Math.random() * 100000) + 1);
   const [createdBy] = useState(1);
@@ -254,19 +268,19 @@ export default function Dashboard() {
         }
       );
 
-      const validated = response.data?.data?.validated_content;
+      const refined = response.data?.data?.refined_content;
 
       toast.dismiss(loadingToastId);
 
       if (
-        validated &&
-        typeof validated === 'object' &&
-        'assessment' in validated &&
-        'flagged_issues' in validated &&
-        'suggestions' in validated
+        refined &&
+        typeof refined === 'object' &&
+        'refined_narrative' in refined &&
+        'compliance_improvements' in refined &&
+        'refinement_summary' in refined
       ) {
         toast.success('Report validated successfully!');
-        setValidationData(validated);
+        setValidationData(refined);
         const newValidation: ValidationHistoryItem = {
           id: generateReportId(),
           reportId: reportId || '',
@@ -277,9 +291,9 @@ export default function Dashboard() {
           coachName: selectedCoach?.name || '',
           programName,
           validation: {
-            assessment: validated.assessment || '',
-            flagged_issues: validated.flagged_issues || [],
-            suggestions: validated.suggestions || [],
+            refined_narrative: refined.refined_narrative || '',
+            compliance_improvements: Array.isArray(refined.compliance_improvements) ? refined.compliance_improvements : [],
+            refinement_summary: refined.refinement_summary || '',
           },
         };
 
@@ -290,8 +304,8 @@ export default function Dashboard() {
       } else {
         Swal.fire({
           icon: 'warning',
-          title: 'No validated content returned',
-          text: 'The response did not contain any validated data.',
+          title: 'No refined content returned',
+          text: 'The response did not contain any refined validation data.',
         });
       }
     } catch (error: any) {
@@ -327,16 +341,10 @@ export default function Dashboard() {
         : `<p style="color: #28a745; font-weight: 500; font-size: 14px; margin: 0; display: flex; align-items: center;">✅ None</p>`;
     };
 
-    const flaggedIssuesList = getListHTML(
-      validationData.flagged_issues || [],
-      '⚠️',
-      '#dc3545'
-    );
-
-    const suggestionsList = getListHTML(
-      validationData.suggestions || [],
-      '💡',
-      '#374151'
+    const improvementsList = getListHTML(
+      validationData.compliance_improvements || [],
+      '✔️',
+      '#0d6efd'
     );
 
     Swal.fire({
@@ -356,62 +364,45 @@ export default function Dashboard() {
         <style> ::-webkit-scrollbar { display: none; } </style>
 
         <p style="margin-bottom: 12px;">
-          <strong style="color: #0d6efd;">Assessment:</strong><br/>
-          <span style="color: #374151;">${validationData.assessment || 'N/A'}</span>
+          <strong style="color: #0d6efd;">Refined Narrative:</strong><br/>
+          <span style="color: #374151;">${validationData.refined_narrative || 'N/A'}</span>
         </p>
 
         <hr style="border-top: 1px solid #e5e7eb; margin: 14px 0;" />
-        <p style="margin-bottom: 6px;"><strong style="color: #dc3545;">Flagged Issues:</strong></p>
-        ${flaggedIssuesList}
+        <p style="margin-bottom: 6px;"><strong style="color: #0d6efd;">Compliance Improvements:</strong></p>
+        ${improvementsList}
 
         <hr style="border-top: 1px solid #e5e7eb; margin: 14px 0;" />
-        <p style="margin-bottom: 0;"><strong style="color: #198754;">Suggestions:</strong></p>
-        <div style="margin-top: 2px;">${suggestionsList}</div>
+        <p style="margin-bottom: 0;"><strong style="color: #198754;">Refinement Summary:</strong></p>
+        <div style="margin-top: 6px; color: #374151;">${validationData.refinement_summary || 'N/A'}</div>
 
-        <div style="margin-top: 20px; text-align: right;">
-          <button id="copy-json-btn" style="
-            background-color: #e0e7ff;
-            color: #1e3a8a;
-            border: none;
-            padding: 6px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 13px;
-            margin-top: 10px;
-          ">📋 Copy</button>
+        <hr style="border-top: 1px solid #e5e7eb; margin: 14px 0;" />
+        <div style="display: flex; justify-content: flex-end; gap: 8px;">
+          <button id="copyValidation" style="
+            padding: 8px 12px; border-radius: 8px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;
+          ">Copy</button>
         </div>
       </div>
-    `,
-      width: 550,
-      padding: '1.4rem 1.6rem',
-      background: '#ffffff',
-      customClass: {
-        popup: 'swal2-rounded-popup',
-      },
-      showClass: {
-        popup: 'animate__animated animate__fadeInDown animate__faster',
-      },
-      hideClass: {
-        popup: 'animate__animated animate__fadeOutUp animate__faster',
-      },
-      confirmButtonColor: '#6366f1',
-      confirmButtonText: 'OK',
+      `,
+      showConfirmButton: true,
+      confirmButtonText: 'Close',
+      confirmButtonColor: '#1d4ed8',
       didOpen: () => {
-        const copyBtn = document.getElementById('copy-json-btn');
-        if (copyBtn) {
-          copyBtn.addEventListener('click', async () => {
-            try {
-              await navigator.clipboard.writeText(JSON.stringify(validationData, null, 2));
-              copyBtn.textContent = '✅ Copied!';
-              setTimeout(() => {
-                copyBtn.textContent = '📋 Copy';
-              }, 2000);
-            } catch {
-              copyBtn.textContent = '❌ Failed';
-            }
-          });
-        }
-      }
+        const copyBtn = document.getElementById('copyValidation');
+        if (!copyBtn) return;
+
+        copyBtn.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(JSON.stringify(validationData, null, 2));
+            (copyBtn as HTMLButtonElement).textContent = '✅ Copied!';
+            setTimeout(() => {
+              (copyBtn as HTMLButtonElement).textContent = 'Copy';
+            }, 1200);
+          } catch {
+            (copyBtn as HTMLButtonElement).textContent = '❌ Failed';
+          }
+        });
+      },
     });
   };
 
@@ -754,26 +745,32 @@ export default function Dashboard() {
     //   created_by: createdBy,
     //   report_date: formatDateToDDMMYYYY(selectedDate), // ✅ Still required
     // };
-
-    const allReports = reportHistory
-      .filter(r => r.firstName.toLowerCase() === firstName.toLowerCase())
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const key = firstName.trim().toLowerCase();
+    const chain = reportChains[key] || { ids: [], contents: [] };
 
     let parentReportId: string | null = null;
     let previousReport: string[] = [];
     let previousReportId: string[] = [];
 
-    if (allReports.length >= 1) {
-      const lastReport = allReports[allReports.length - 1]; // immediate previous
-      parentReportId = lastReport.id;
+    const count = chain.ids.length;
 
-      if (allReports.length >= 2) {
-        const reportsBeforeLast = allReports.slice(0, -1); // all except last
-        previousReport = reportsBeforeLast.map(r => r.report);
-        previousReportId = reportsBeforeLast.map(r => r.id);
-      }
+    // Required behavior:
+    // 1st report: parent=null, previous=[]
+    // 2nd report: parent=<first_id>, previous=[]
+    // 3rd+ report: parent=<immediate_previous_id>, previous=[first_report], previous_id=[first_id]
+    if (count === 0) {
+      parentReportId = null;
+      previousReport = [];
+      previousReportId = [];
+    } else if (count === 1) {
+      parentReportId = chain.ids[0];
+      previousReport = [];
+      previousReportId = [];
+    } else {
+      parentReportId = chain.ids[count - 1];
+      previousReport = [chain.contents[0]];
+      previousReportId = [chain.ids[0]];
     }
-
 
     const requestId = generateRequestId();
 
@@ -806,7 +803,6 @@ export default function Dashboard() {
       report_date: formatDateToDDMMYYYY(selectedDate),
     };
 
-
     abortControllerRef.current = new AbortController(); // ✅ Assign controller
     try {
       const result = await toast.promise(
@@ -821,15 +817,20 @@ export default function Dashboard() {
       );
 
       if (!result) return;
-      // console.log('Generated report:', result);
-      const reportData = result;
+
+      const apiReportId: string | null = result.report_id ?? null;
+      if (!apiReportId) {
+        toast.error('Missing report_id in API response.');
+        setLoading(false);
+        return;
+      }
 
       if (
-        reportData.content.length > 0
+        result.content.length > 0
       ) {
         let hasValidSegment = false;
 
-        reportData.content.forEach((segment: any) => {
+        result.content.forEach((segment: any) => {
           if (
             segment &&
             typeof segment.report_segment === "string" &&
@@ -848,9 +849,6 @@ export default function Dashboard() {
             generatedReport += formatted + "\n\n";
 
             hasValidSegment = true;
-            // console.log("Valid segment found:", generatedReport);
-            // console.log(" botMsgs", botMsgs);
-            // console.log(" newMessages", newMessages);
           }
         });
 
@@ -861,34 +859,29 @@ export default function Dashboard() {
         toast.error("Report generated but returned no content.");
       }
 
-
       const newChatMessages = [userMsg, ...botMsgs];
 
+      // Bind report history to firstname: append under single chat thread if exists
       const matchingIndex = reportHistory.findIndex(
-        (item) =>
-          item.firstName.toLowerCase() === firstName.toLowerCase()
+        (item) => item.firstName.trim().toLowerCase() === firstName.trim().toLowerCase()
       );
 
-      let updatedHistory: ReportHistoryItem[] = [];
-      let newReportId = generateReportId();
-
+      let updatedHistory: ReportHistoryItem[];
 
       if (matchingIndex !== -1) {
         const updatedItem = { ...reportHistory[matchingIndex] };
         updatedItem.chat = [...(updatedItem.chat || []), ...newChatMessages];
-        updatedItem.report = (updatedItem.report || '') + '\n\n' + generatedReport.trim();
+        updatedItem.report = ((updatedItem.report || '') + '\n\n' + generatedReport.trim()).trim();
         updatedItem.date = formatDateToDDMMYYYY(selectedDate);
         updatedItem.note = note;
 
-        newReportId = updatedItem.id;
         updatedHistory = [
           updatedItem,
           ...reportHistory.filter((_, i) => i !== matchingIndex),
         ];
       } else {
-        newReportId = generateReportId();
         const newHistory: ReportHistoryItem = {
-          id: newReportId,
+          id: apiReportId, // use API report_id for first creation
           date: formatDateToDDMMYYYY(selectedDate),
           firstName,
           lastName,
@@ -907,20 +900,30 @@ export default function Dashboard() {
 
         updatedHistory = [newHistory, ...reportHistory];
       }
+
       setMessages((prev) => [...prev, ...newMessages]);
       setLoading(false);
       setReportHistory(updatedHistory);
       saveReportHistory(updatedHistory);
 
+      // Update per-user chain with the new API report_id and the generated content
+      const currentKey = firstName.trim().toLowerCase();
+      const currentChain = reportChains[currentKey] || { ids: [], contents: [] };
+      const nextChain = {
+        ids: [...currentChain.ids, apiReportId],
+        contents: [...currentChain.contents, generatedReport.trim()],
+      };
+      const newChains = { ...reportChains, [currentKey]: nextChain };
+      setReportChains(newChains);
+      saveReportChains(newChains);
+
       if (generatedReport.trim()) {
         await handleValidate(
           generatedReport.trim(),
           Cookies.get('access_token') || '',
-          newReportId, // ✅ Use the unique report id
-          // requestId,
+          apiReportId, // ✅ Use API report_id
         );
       }
-
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || '❌ Failed to generate report.';
       newMessages.push({
