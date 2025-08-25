@@ -21,7 +21,9 @@ type MessageType = {
   url?: string;
   date?: string;
   month?: string;
+  isTyping?: boolean; // Track if this message is still typing
 };
+
 
 type Coach = { id: number; name: string };
 type ProgramDuration = | '1_MONTH' | '2_MONTHS' | '3_MONTHS' | '4_MONTHS' | '5_MONTHS' | '6_MONTHS' | '12_MONTHS';
@@ -218,10 +220,72 @@ export default function Dashboard() {
 
   const [validationData, setValidationData] = useState<any>(null); // Stores validated content
   const [validationHistory, setValidationHistory] = useState<ValidationHistoryItem[]>(getValidationHistory());
+
   const [reportChains, setReportChains] = useState<Record<string, { ids: string[]; contents: string[] }>>(
     getReportChains()
   );
-  // const [requestId, setRequestId] = useState(generateObjectId());
+
+
+  const typingIntervalRef = useRef<number | null>(null);
+  const [typingSpeed] = useState(18); // ms per character; tweak for natural speed
+
+  const typeOutText = async (fullText: string, dateISO: string) => {
+    return new Promise<void>((resolve) => {
+      // Create a new bot message with empty text and typing flag
+      let messageIndex = -1;
+      setMessages(prev => {
+        messageIndex = prev.length;
+        return [
+          ...prev,
+          {
+            sender: 'bot',
+            type: 'text',
+            text: '',
+            date: dateISO,
+            isTyping: true, // Mark as typing
+          },
+        ];
+      });
+
+      let i = 0;
+      const len = fullText.length;
+
+      const step = () => {
+        setMessages(prev => {
+          if (!prev[messageIndex]) return prev;
+          const next = [...prev];
+          const current = next[messageIndex];
+          next[messageIndex] = {
+            ...current,
+            text: (current.text || '') + fullText.charAt(i),
+            isTyping: true, // Keep typing flag while in progress
+          };
+          return next;
+        });
+
+        i += 1;
+        if (i < len) {
+          typingIntervalRef.current = window.setTimeout(step, typingSpeed);
+        } else {
+          // Typing complete - mark message as finished
+          setMessages(prev => {
+            if (!prev[messageIndex]) return prev;
+            const next = [...prev];
+            next[messageIndex] = {
+              ...next[messageIndex],
+              isTyping: false, // Mark typing as complete
+            };
+            return next;
+          });
+          typingIntervalRef.current = null;
+          resolve();
+        }
+      };
+
+      typingIntervalRef.current = window.setTimeout(step, typingSpeed);
+    });
+  };
+
   const [candidateId] = useState(() => Math.floor(Math.random() * 100000) + 1);
   const [createdBy] = useState(1);
   const [reportHistory, setReportHistory] = useState<ReportHistoryItem[]>(getReportHistory());
@@ -379,8 +443,7 @@ export default function Dashboard() {
         <hr style="border-top: 1px solid #e5e7eb; margin: 14px 0;" />
         <div style="display: flex; justify-content: flex-end; gap: 8px;">
           <button id="copyValidation" style="
-            padding: 8px 12px; border-radius: 8px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;
-          ">Copy</button>
+            padding: 8px 12px; border-radius: 8px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; cursor: pointer;">Copy</button>
         </div>
       </div>
       `,
@@ -411,6 +474,7 @@ export default function Dashboard() {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
       setLoading(false);
+      setLoadingMessageIndex(0);
       toast.error(' Generation stopped.');
     }
   };
@@ -419,6 +483,25 @@ export default function Dashboard() {
 
   useEffect(() => {
     startNewChat();
+  }, []);
+
+  // Cycle loader messages only while loading===true
+  useEffect(() => {
+    if (!loading) return;
+    const interval = setInterval(() => {
+      setLoadingMessageIndex((prev) => (prev + 1) % loadingMessages.length);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [loading]);
+
+  // Typing timer cleanup on unmount / remount
+  useEffect(() => {
+    return () => {
+      if (typingIntervalRef.current) {
+        clearTimeout(typingIntervalRef.current);
+        typingIntervalRef.current = null;
+      }
+    };
   }, []);
 
 
@@ -678,9 +761,7 @@ export default function Dashboard() {
 
     setLoading(true);
     setInput('');
-    let botMsgs: MessageType[] = [];
     let generatedReport = '';
-
 
     const newMessages: MessageType[] = [];
     const previousUserReports = reportHistory.filter(
@@ -717,34 +798,7 @@ export default function Dashboard() {
 
     const notes = [...currentMonthUserNotes, note];
 
-    // const payload = {
-    //   request_id: requestId,
-    //   candidate: {
-    //     id: candidateId,
-    //     first_name: firstName,
-    //     last_name: lastName,
-    //   },
-    //   coach: {
-    //     id: selectedCoach.id,
-    //     name: selectedCoach.name,
-    //   },
-    //   program: {
-    //     program_name: programName,
-    //     program_type: programType,
-    //     program_duration: programDuration,
-    //     initial_meeting_date: null,
-    //     program_active_date: formatDateToDDMMYYYY(programActiveDate),
-    //     program_completed_date: formatDateToDDMMYYYY(programCompletedDate),
-    //   },
-    //   notes: notes,
-    //   previous_reports: previous_reports,
-    //   parent_report_id: null,
-    //   previous_reports_id: previous_reports_id,
-    //   output_config: { type: 'TEXT' },
-    //   status: 'completed',
-    //   created_by: createdBy,
-    //   report_date: formatDateToDDMMYYYY(selectedDate), // ✅ Still required
-    // };
+
     const key = firstName.trim().toLowerCase();
     const chain = reportChains[key] || { ids: [], contents: [] };
 
@@ -822,12 +876,11 @@ export default function Dashboard() {
       if (!apiReportId) {
         toast.error('Missing report_id in API response.');
         setLoading(false);
+        setLoadingMessageIndex(0);
         return;
       }
 
-      if (
-        result.content.length > 0
-      ) {
+      if (result.content.length > 0) {
         let hasValidSegment = false;
 
         result.content.forEach((segment: any) => {
@@ -837,17 +890,7 @@ export default function Dashboard() {
             segment.report_segment.trim() !== ""
           ) {
             const formatted = segment.report_segment.trim();
-            const botMsg: MessageType = {
-              sender: "bot",
-              type: "text",
-              text: formatted,
-              date: new Date(selectedDate).toISOString(),
-            };
-
-            newMessages.push(botMsg);
-            botMsgs.push(botMsg);
             generatedReport += formatted + "\n\n";
-
             hasValidSegment = true;
           }
         });
@@ -859,11 +902,32 @@ export default function Dashboard() {
         toast.error("Report generated but returned no content.");
       }
 
-      const newChatMessages = [userMsg, ...botMsgs];
+      // We have the final content from API. Hide loader BEFORE typing so loader doesn't block.
+      const finalReportText = generatedReport.trim();
+      setLoading(false);
+      setLoadingMessageIndex(0);
+
+      // Typing animation for the combined report text (non-blocking for loader)
+      if (finalReportText) {
+        await typeOutText(finalReportText, new Date(selectedDate).toISOString());
+      }
+
+
+      // Build chat messages after typing completes (so history stores full text)
+      const newChatMessages: MessageType[] = [
+        userMsg,
+        {
+          sender: 'bot',
+          type: 'text',
+          text: finalReportText,
+          date: new Date(selectedDate).toISOString(),
+        },
+      ];
 
       // Bind report history to firstname: append under single chat thread if exists
       const matchingIndex = reportHistory.findIndex(
-        (item) => item.firstName.trim().toLowerCase() === firstName.trim().toLowerCase()
+        (item) =>
+          item.firstName.trim().toLowerCase() === firstName.trim().toLowerCase()
       );
 
       let updatedHistory: ReportHistoryItem[];
@@ -871,7 +935,7 @@ export default function Dashboard() {
       if (matchingIndex !== -1) {
         const updatedItem = { ...reportHistory[matchingIndex] };
         updatedItem.chat = [...(updatedItem.chat || []), ...newChatMessages];
-        updatedItem.report = ((updatedItem.report || '') + '\n\n' + generatedReport.trim()).trim();
+        updatedItem.report = ((updatedItem.report || '') + '\n\n' + finalReportText).trim();
         updatedItem.date = formatDateToDDMMYYYY(selectedDate);
         updatedItem.note = note;
 
@@ -894,15 +958,14 @@ export default function Dashboard() {
           programCompletedDate,
           report_date: formatDateToDDMMYYYY(selectedDate),
           note,
-          report: generatedReport.trim(),
+          report: finalReportText,
           chat: newChatMessages,
         };
 
         updatedHistory = [newHistory, ...reportHistory];
       }
 
-      setMessages((prev) => [...prev, ...newMessages]);
-      setLoading(false);
+      // Loader already hidden; ensure no lingering intervals
       setReportHistory(updatedHistory);
       saveReportHistory(updatedHistory);
 
@@ -911,15 +974,15 @@ export default function Dashboard() {
       const currentChain = reportChains[currentKey] || { ids: [], contents: [] };
       const nextChain = {
         ids: [...currentChain.ids, apiReportId],
-        contents: [...currentChain.contents, generatedReport.trim()],
+        contents: [...currentChain.contents, finalReportText],
       };
       const newChains = { ...reportChains, [currentKey]: nextChain };
       setReportChains(newChains);
       saveReportChains(newChains);
 
-      if (generatedReport.trim()) {
+      if (finalReportText) {
         await handleValidate(
-          generatedReport.trim(),
+          finalReportText,
           Cookies.get('access_token') || '',
           apiReportId, // ✅ Use API report_id
         );
@@ -1192,16 +1255,17 @@ export default function Dashboard() {
                   })}
                 </div>
               )}
-
               <div
                 className={`relative max-w-[95%] sm:max-w-[80%] whitespace-pre-wrap break-words px-4 py-3 rounded-2xl transition-all duration-300 ease-out shadow-md ${msg.sender === 'user'
                   ? 'bg-blue-100 self-end ml-auto text-blue-800'
                   : 'bg-gray-100 self-start mr-auto text-gray-900'
                   }`}
               >
+                {/* Only show buttons for bot messages that are NOT typing and have content */}
                 {msg.sender === 'bot' &&
                   msg.text !== '👋 Hi there! Please select your details and enter your prompt to generate the report.' &&
-                  msg.text && (
+                  msg.text &&
+                  !msg.isTyping && ( // Only show buttons after typing completes
                     <div className="absolute bottom-0 right-2 flex flex-row items-center space-x-1">
                       {/* Copy Button */}
                       <button
@@ -1227,7 +1291,6 @@ export default function Dashboard() {
                       >
                         <span className="text-lg">ℹ️</span>
                       </button>
-
                     </div>
                   )}
                 <div className="prose prose-sm max-w-full text-sm sm:text-base">
